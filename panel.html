@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Decrypt Network Inspector</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #020617;
+        color: #e5e7eb;
+        font-size: 12px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 10px;
+        border-bottom: 1px solid #1f2937;
+        background: #030712;
+      }
+
+      .toolbar-title {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+
+      .toolbar-right {
+        display: flex;
+        gap: 6px;
+      }
+
+      button {
+        border-radius: 4px;
+        border: 1px solid #374151;
+        background: #020617;
+        color: #e5e7eb;
+        padding: 3px 8px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #111827;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        height: calc(100vh - 40px);
+      }
+
+      .sidebar {
+        border-right: 1px solid #1f2937;
+        background: #020617;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 6px 8px;
+        border-bottom: 1px solid #111827;
+        font-size: 11px;
+        color: #9ca3af;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .request-list {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: none;   
+      }
+
+      .request-list::-webkit-scrollbar {
+        display: none;                 /* Chrome */
+      }
+
+      .request-item {
+        padding: 4px 8px;
+        border-bottom: 1px solid #030712;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .request-item:hover {
+        background: #111827;
+      }
+
+      .request-item.active {
+        background: #1d283a;
+      }
+
+      .req-top-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .req-method {
+        font-weight: 600;
+        font-size: 11px;
+      }
+
+      .req-status {
+        font-size: 11px;
+      }
+
+      .req-status.ok {
+        color: #22c55e;
+      }
+
+      .req-status.err {
+        color: #f97373;
+      }
+
+      .req-url {
+        font-size: 10px;
+        color: #9ca3af;
+        word-break: break-all;
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .request-summary {
+        padding: 6px 10px;
+        border-bottom: 1px solid #111827;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid #111827;
+      }
+
+      .tab-button {
+        padding: 5px 10px;
+        font-size: 11px;
+        border: none;
+        border-right: 1px solid #111827;
+        background: #020617;
+        color: #9ca3af;
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        background: #111827;
+        color: #e5e7eb;
+      }
+
+      .tab-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 10px;
+      }
+
+      .tab-pane {
+        display: none;
+        height: 100%;
+      }
+
+      .tab-pane.active {
+        display: block;
+      }
+
+      .sub-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+      }
+
+      .sub-toolbar-left {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .badge {
+        border-radius: 999px;
+        padding: 1px 6px;
+        background: #020617;
+        border: 1px solid #1f2937;
+        font-size: 10px;
+        color: #9ca3af;
+      }
+
+      .content-split {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: auto;
+      }
+
+
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: #020617;
+        border-radius: 4px;
+        border: 1px solid #1f2937;
+        padding: 6px 8px;
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        overflow: visible;
+        max-height: none;   
+      }
+
+      .json-tree {
+        border-radius: 4px;
+        border: 1px solid #1f2937;
+        padding: 4px 6px;
+        background: #020617;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,"Liberation Mono", "Courier New", monospace;
+        overflow: visible;       
+        white-space: normal;     
+        word-break: break-word;  
+        max-height: none;
+      }
+
+      .json-primitive {
+        margin-left: 10px;
+      }
+
+      .json-key {
+        color: #93c5fd;
+      }
+
+      .json-string {
+        color: #a7f3d0;
+      }
+
+      .json-number {
+        color: #facc15;
+      }
+
+      .json-boolean {
+        color: #f97316;
+      }
+
+      .json-null {
+        color: #9ca3af;
+      }
+
+      .json-root > details {
+        margin-left: 0;
+      }
+
+      .json-root summary {
+        font-weight: 500;
+      }
+
+      .json-tree details {
+        margin-left: 10px;
+      }
+
+      .empty-message {
+        font-size: 11px;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <div>
+        <div class="toolbar-title">Decrypt Network Inspector</div>
+      </div>
+      <div class="toolbar-right">
+        <button id="clear-btn">Clear</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <span>Requests (XHR / Fetch)</span>
+          <span id="req-count">0</span>
+        </div>
+        <div class="request-list" id="request-list"></div>
+      </div>
+
+      <div class="main">
+        <div class="request-summary" id="request-summary">
+          No request selected.
+        </div>
+
+        <div class="tabs">
+          <button class="tab-button active" data-tab="headers">Headers</button>
+          <button class="tab-button" data-tab="params">Params</button>
+          <button class="tab-button" data-tab="payload">Payload</button>
+          <button class="tab-button" data-tab="response">Response</button>
+        </div>
+
+        <div class="tab-content">
+          <div class="tab-pane active" id="tab-headers">
+            <div class="sub-toolbar">
+              <div class="sub-toolbar-left">
+                <span>Headers</span>
+                <span class="badge" id="headers-mode">raw</span>
+              </div>
+              <button id="headers-decrypt-btn">Decrypt / Show raw</button>
+            </div>
+            <div class="content-split">
+              <pre id="headers-raw"></pre>
+              <div class="json-tree json-root" id="headers-tree"></div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-params">
+            <div class="sub-toolbar">
+              <div class="sub-toolbar-left">
+                <span>Params</span>
+                <span class="badge" id="params-mode">raw</span>
+              </div>
+              <button id="params-decrypt-btn">Decrypt / Show raw</button>
+            </div>
+            <div class="content-split">
+              <pre id="params-raw"></pre>
+              <div class="json-tree json-root" id="params-tree"></div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-payload">
+            <div class="sub-toolbar">
+              <div class="sub-toolbar-left">
+                <span>Payload</span>
+                <span class="badge" id="payload-mode">raw</span>
+              </div>
+              <button id="payload-decrypt-btn">Decrypt / Show raw</button>
+            </div>
+            <div class="content-split">
+              <pre id="payload-raw"></pre>
+              <div class="json-tree json-root" id="payload-tree"></div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-response">
+            <div class="sub-toolbar">
+              <div class="sub-toolbar-left">
+                <span>Response</span>
+                <span class="badge" id="response-mode">raw</span>
+              </div>
+              <button id="response-decrypt-btn">Decrypt / Show raw</button>
+            </div>
+            <div class="content-split">
+              <pre id="response-raw"></pre>
+              <div class="json-tree json-root" id="response-tree"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="crypto-js.js"></script>
+    <script src="decrypt.js"></script>
+    <script src="panel.js"></script>
+  </body>
+</html>

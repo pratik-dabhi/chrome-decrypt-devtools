@@ -1,7 +1,7 @@
 {
   "name": "Decrypt DevTools",
   "description": "DevTools panel that lists XHR/Fetch requests and lets you decrypt headers, payload and response.",
-  "version": "1.0.0",
-  "manifest_version": 1,
+  "version": "2.0.0",
+  "manifest_version": 3,
   "devtools_page": "devtools.html"
 }

@@ -17,10 +17,11 @@ const payloadModeBadge = document.getElementById("payload-mode");
 const paramsModeBadge = document.getElementById("params-mode");
 const responseModeBadge = document.getElementById("response-mode");
 
-const headersDecryptBtn = document.getElementById("headers-decrypt-btn");
 const payloadDecryptBtn = document.getElementById("payload-decrypt-btn");
 const responseDecryptBtn = document.getElementById("response-decrypt-btn");
 const paramsDecryptBtn = document.getElementById("params-decrypt-btn");
+
+const mainLayout = document.getElementById("main");
 
 const tabButtons = Array.from(document.querySelectorAll(".tab-button"));
 const tabPanes = {
@@ -39,109 +40,11 @@ let viewModes = {
   response: "raw"
 };
 
-
-function isFetchOrXhr(req) {
-  try {
-    const url = req.request?.url;
-
-    if (!url || !url.startsWith("http")) return false;
-
-    return url.includes("/v1/");
-  } catch (e) {
-    console.warn("XHR/FETCH detect failed:", e);
-    return false;
-  }
-}
-
-function prettyJson(val) {
-  if (val == null) return "";
-  if (typeof val === "string") return val;
-  try {
-    return JSON.stringify(val, null, 2);
-  } catch {
-    return String(val);
-  }
-}
-
-function buildJsonNode(value, key) {
-  const type = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
-
-  if (type === "object" || type === "array") {
-    const details = document.createElement("details");
-    details.open = true;
-
-    const summary = document.createElement("summary");
-    if (key !== undefined && key !== null) {
-      summary.innerHTML =
-        '<span class="json-key">' +
-        key +
-        "</span>: " +
-        (type === "array" ? "Array[" + value.length + "]" : "Object");
-    } else {
-      summary.textContent =
-        type === "array" ? "Array[" + value.length + "]" : "Object";
-    }
-    details.appendChild(summary);
-
-    const entries = type === "array" ? value.entries() : Object.entries(value);
-    for (const [k, v] of entries) {
-      const child = buildJsonNode(v, k);
-      details.appendChild(child);
-    }
-    return details;
-  }
-
-  const line = document.createElement("div");
-  line.className = "json-primitive";
-
-  const keyPart =
-    key !== undefined && key !== null
-      ? '<span class="json-key">' + key + "</span>: "
-      : "";
-
-  if (value === null) {
-    line.innerHTML = keyPart + '<span class="json-null">null</span>';
-  } else if (typeof value === "string") {
-    line.innerHTML =
-      keyPart + '<span class="json-string">"' + value + '"</span>';
-  } else if (typeof value === "number") {
-    line.innerHTML = keyPart + '<span class="json-number">' + value + "</span>";
-  } else if (typeof value === "boolean") {
-    line.innerHTML =
-      keyPart + '<span class="json-boolean">' + value + "</span>";
-  } else {
-    line.textContent = keyPart + String(value);
-  }
-
-  return line;
-}
-
-function renderJsonTree(container, value) {
-  container.innerHTML = "";
-  if (value === undefined || value === null || value === "") {
-    const msg = document.createElement("div");
-    msg.className = "empty-message";
-    msg.textContent = "No JSON content.";
-    container.appendChild(msg);
-    return;
-  }
-
-  const type = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
-  if (type !== "object" && type !== "array") {
-    const msg = document.createElement("div");
-    msg.className = "empty-message";
-    msg.textContent = "Not JSON (showing as text).";
-    container.appendChild(msg);
-    return;
-  }
-
-  const root = buildJsonNode(value, null);
-  container.appendChild(root);
-}
-
+/* Reset the view mode to raw */
 function resetViewModes() {
   viewModes = {
     headers: "raw",
+    params: "raw",
     payload: "raw",
     response: "raw"
   };
@@ -151,6 +54,7 @@ function resetViewModes() {
   responseModeBadge.textContent = "raw";
 }
 
+/* Executes multiple actions at the same time */
 function selectRequest(id) {
   selectedRequestId = id;
   resetViewModes();
@@ -158,6 +62,7 @@ function selectRequest(id) {
   renderDetail();
 }
 
+/* Render all requests */
 function renderRequestList() {
   requestListEl.innerHTML = "";
 
@@ -203,6 +108,7 @@ function renderRequestList() {
   reqCountEl.textContent = String(requests.length);
 }
 
+/* Render the selected request */
 function renderDetail() {
   const req = requests.find((r) => r.id === selectedRequestId);
   if (!req) {
@@ -215,8 +121,11 @@ function renderDetail() {
     paramsTreeEl.innerHTML = "";
     responseRawEl.textContent = "";
     responseTreeEl.innerHTML = "";
+    mainLayout.style.display = "none";
     return;
   }
+
+  mainLayout.style.display = "block";
 
   requestSummaryEl.textContent =
     (req.method || "GET") + " " + req.url + (req.status ? " (" + req.status + ")" : "");
@@ -244,30 +153,41 @@ function renderDetail() {
   paramsRawEl.textContent = JSON.stringify(param, null, 2) || "(no params)";
   paramsTreeEl.innerHTML = "";
   paramsRawEl.style.display = "block";
+  paramsDecryptBtn.style.display = "block"
+  if(!JSON.stringify(param, null, 2)){
+    paramsDecryptBtn.style.display = "none"
+  }
   
   payloadRawEl.textContent = req.requestBody || "(no payload)";
   payloadTreeEl.innerHTML = "";
   payloadRawEl.style.display = "block";
+  payloadDecryptBtn.style.display = "block"
+  if(!req.requestBody){
+    payloadDecryptBtn.style.display = "none"
+  }
 
   responseRawEl.textContent = req.responseBody || "(empty response)";
   responseTreeEl.innerHTML = "";
   responseRawEl.style.display = "block";
+  responseDecryptBtn.style.display = "block"
+  if(!req.responseBody){
+    responseDecryptBtn.style.display = "none"
+  }
+
 }
 
+/* Find current selected request */
 function currentSelected() {
   return requests.find((r) => r.id === selectedRequestId) || null;
 }
 
+/* Toggle function to raw/decrypt data */
 function toggleDecrypt(tab) {
   const req = currentSelected();
   if (!req) return;
 
   if (viewModes[tab] === "raw") {
-    if (tab === "headers") {
-      const raw = headersRawEl.textContent || "";
-      headersRawEl.textContent =
-        typeof raw === "string" ? raw : prettyJson(raw);
-    } else if (tab === "params") {
+    if (tab === "params") {
       const url = req.url || req.request?.url || "";
       const param = getFirstQueryParam(url);
       let parsed;
@@ -317,6 +237,7 @@ function toggleDecrypt(tab) {
       responseModeBadge.textContent = "decrypted";
     }
   } else {
+    console.log("no mode found so render again");
     renderDetail();
     viewModes[tab] = "raw";
     if (tab === "headers") headersModeBadge.textContent = "raw";
@@ -326,17 +247,20 @@ function toggleDecrypt(tab) {
   }
 }
 
-headersDecryptBtn.addEventListener("click", () => toggleDecrypt("headers"));
+/* Event Listeners for decrypt buttons */
 paramsDecryptBtn.addEventListener("click", () => toggleDecrypt("params"));
 payloadDecryptBtn.addEventListener("click", () => toggleDecrypt("payload"));
 responseDecryptBtn.addEventListener("click", () => toggleDecrypt("response"));
 
+/* Switch the tab (Header, Payload,...) */
 tabButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const tab = btn.getAttribute("data-tab");
 
     tabButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+    resetViewModes();
+    renderDetail();
 
     Object.keys(tabPanes).forEach((name) => {
       tabPanes[name].classList.toggle("active", name === tab);
@@ -344,6 +268,7 @@ tabButtons.forEach((btn) => {
   });
 });
 
+/* Clear all requests */
 clearBtn.addEventListener("click", () => {
   requests = [];
   selectedRequestId = null;
@@ -351,6 +276,7 @@ clearBtn.addEventListener("click", () => {
   renderDetail();
 });
 
+/* Listen the network request */
 chrome.devtools.network.onRequestFinished.addListener((req) => {
   if (!isFetchOrXhr(req)) return;
 
@@ -384,42 +310,6 @@ chrome.devtools.network.onRequestFinished.addListener((req) => {
     renderDetail();
   });
 });
-
-function getFirstQueryParam(url) {
-  try {
-    const u = new URL(url);
-    const keys = [...u.searchParams.keys()];
-
-    if (keys.length === 0) return null;
-
-    const firstKey = keys[0];
-    const firstValue = u.searchParams.get(firstKey);
-
-    return { key: firstKey, value: firstValue };
-  } catch (e) {
-    console.warn("Query param parse failed:", e);
-    return null;
-  }
-}
-
-function safeParseJson(str) {
-  if (!str || typeof str !== "string") return str;
-
-  str = str.trim();
-
-  if (
-    (str.startsWith('"') && str.endsWith('"')) ||
-    (str.startsWith("'") && str.endsWith("'"))
-  ) {
-    str = str.slice(1, -1);
-  }
-
-  try {
-    return JSON.parse(str);
-  } catch {
-    return str; 
-  }
-}
 
 renderRequestList();
 renderDetail();

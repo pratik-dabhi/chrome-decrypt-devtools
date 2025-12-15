@@ -158,7 +158,7 @@ function renderDetail() {
     paramsDecryptBtn.style.display = "none"
   }
   
-  payloadRawEl.textContent = req.requestBody || "(no payload)";
+  payloadRawEl.textContent = JSON.stringify(req.requestBody) || "(no payload)";
   payloadTreeEl.innerHTML = "";
   payloadRawEl.style.display = "block";
   payloadDecryptBtn.style.display = "block"
@@ -294,10 +294,7 @@ chrome.devtools.network.onRequestFinished.addListener((req) => {
       status: req.response && req.response.status,
       requestHeaders: (req.request && req.request.headers) || [],
       responseHeaders: (req.response && req.response.headers) || [],
-      requestBody:
-        req.request && req.request.postData && req.request.postData.text
-          ? req.request.postData.text
-          : "",
+      requestBody:getPostEncryptedPayload(req),
       responseBody: body || ""
     };
 

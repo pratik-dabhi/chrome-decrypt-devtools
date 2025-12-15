@@ -132,3 +132,30 @@ function safeParseJson(str) {
     return str; 
   }
 }
+
+function getPostEncryptedPayload(req) {
+  const request = req?.request;
+  if (!request || request.method !== "POST") return null;
+
+  const postData = request.postData;
+  if (!postData) return null;
+  
+  if (Array.isArray(postData.params) && postData.params.length) {
+    const { name, value } = postData.params[0];
+    return { [name]: value };
+  }
+
+  const text = postData.text?.trim();
+  if (text && text.startsWith("{") && text.endsWith("}")) {
+    try {
+      const json = JSON.parse(text);
+      const firstKey = Object.keys(json)[0];
+      return { [firstKey]: json[firstKey] };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+

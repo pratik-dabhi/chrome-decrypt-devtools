@@ -28,7 +28,7 @@ const tabPanes = {
   headers: document.getElementById("tab-headers"),
   params: document.getElementById("tab-params"),
   payload: document.getElementById("tab-payload"),
-  response: document.getElementById("tab-response")
+  response: document.getElementById("tab-response"),
 };
 
 let requests = [];
@@ -37,7 +37,7 @@ let viewModes = {
   headers: "raw",
   params: "raw",
   payload: "raw",
-  response: "raw"
+  response: "raw",
 };
 
 /* Reset the view mode to raw */
@@ -46,7 +46,7 @@ function resetViewModes() {
     headers: "raw",
     params: "raw",
     payload: "raw",
-    response: "raw"
+    response: "raw",
   };
   headersModeBadge.textContent = "raw";
   paramsModeBadge.textContent = "raw";
@@ -76,7 +76,8 @@ function renderRequestList() {
 
   for (const req of requests) {
     const item = document.createElement("div");
-    item.className = "request-item" + (req.id === selectedRequestId ? " active" : "");
+    item.className =
+      "request-item" + (req.id === selectedRequestId ? " active" : "");
 
     const top = document.createElement("div");
     top.className = "req-top-line";
@@ -128,7 +129,10 @@ function renderDetail() {
   mainLayout.style.display = "block";
 
   requestSummaryEl.textContent =
-    (req.method || "GET") + " " + req.url + (req.status ? " (" + req.status + ")" : "");
+    (req.method || "GET") +
+    " " +
+    req.url +
+    (req.status ? " (" + req.status + ")" : "");
 
   const reqHeadersStr = (req.requestHeaders || [])
     .map((h) => h.name + ": " + h.value)
@@ -153,27 +157,26 @@ function renderDetail() {
   paramsRawEl.textContent = JSON.stringify(param, null, 2) || "(no params)";
   paramsTreeEl.innerHTML = "";
   paramsRawEl.style.display = "block";
-  paramsDecryptBtn.style.display = "block"
-  if(!JSON.stringify(param, null, 2)){
-    paramsDecryptBtn.style.display = "none"
+  paramsDecryptBtn.style.display = "block";
+  if (!JSON.stringify(param, null, 2)) {
+    paramsDecryptBtn.style.display = "none";
   }
-  
+
   payloadRawEl.textContent = JSON.stringify(req.requestBody) || "(no payload)";
   payloadTreeEl.innerHTML = "";
   payloadRawEl.style.display = "block";
-  payloadDecryptBtn.style.display = "block"
-  if(!req.requestBody){
-    payloadDecryptBtn.style.display = "none"
+  payloadDecryptBtn.style.display = "block";
+  if (!req.requestBody) {
+    payloadDecryptBtn.style.display = "none";
   }
 
   responseRawEl.textContent = req.responseBody || "(empty response)";
   responseTreeEl.innerHTML = "";
   responseRawEl.style.display = "block";
-  responseDecryptBtn.style.display = "block"
-  if(!req.responseBody){
-    responseDecryptBtn.style.display = "none"
+  responseDecryptBtn.style.display = "block";
+  if (!req.responseBody) {
+    responseDecryptBtn.style.display = "none";
   }
-
 }
 
 /* Find current selected request */
@@ -215,7 +218,7 @@ function toggleDecrypt(tab) {
         console.warn("Decrypt payload failed", e);
         parsed = raw;
       }
-      
+
       payloadRawEl.style.display = "none";
       renderJsonTree(payloadTreeEl, parsed);
       viewModes.payload = "decrypted";
@@ -251,6 +254,23 @@ function toggleDecrypt(tab) {
 paramsDecryptBtn.addEventListener("click", () => toggleDecrypt("params"));
 payloadDecryptBtn.addEventListener("click", () => toggleDecrypt("payload"));
 responseDecryptBtn.addEventListener("click", () => toggleDecrypt("response"));
+
+/* Environment Selector */
+const envSelector = document.getElementById("env-selector");
+envSelector.addEventListener("change", (e) => {
+  const env = e.target.value;
+  if (window.setEnvironment) {
+    window.setEnvironment(env);
+    // Optional: Reset view modes or re-decrypt if currently viewing decrypted content
+    // For now, let's just reset view modes to be safe/simple
+    resetViewModes();
+    renderDetail();
+  }
+});
+// Initialize default
+if (window.setEnvironment) {
+  window.setEnvironment(envSelector.value);
+}
 
 /* Switch the tab (Header, Payload,...) */
 tabButtons.forEach((btn) => {
@@ -294,8 +314,8 @@ chrome.devtools.network.onRequestFinished.addListener((req) => {
       status: req.response && req.response.status,
       requestHeaders: (req.request && req.request.headers) || [],
       responseHeaders: (req.response && req.response.headers) || [],
-      requestBody:getPostEncryptedPayload(req),
-      responseBody: body || ""
+      requestBody: getPostEncryptedPayload(req),
+      responseBody: body || "",
     };
 
     requests.push(entry);

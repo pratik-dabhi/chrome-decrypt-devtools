@@ -13,7 +13,11 @@ function isFetchOrXhr(req) {
 
 function prettyJson(val) {
   if (val == null) return "";
-  if (typeof val === "string") return val;
+  if (typeof val === "string") {
+    const parsed = safeParseJson(val);
+    if (parsed !== val) return prettyJson(parsed);
+    return val;
+  }
   try {
     return JSON.stringify(val, null, 2);
   } catch {
@@ -21,7 +25,28 @@ function prettyJson(val) {
   }
 }
 
+function appendKey(target, key) {
+  if (key === undefined || key === null) return;
+
+  const keyEl = document.createElement("span");
+  keyEl.className = "json-key";
+  keyEl.textContent = String(key);
+  target.appendChild(keyEl);
+  target.appendChild(document.createTextNode(": "));
+}
+
+function normalizeJsonValue(value) {
+  if (typeof value !== "string") return value;
+
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+
+  const parsed = safeParseJson(trimmed);
+  return parsed;
+}
+
 function buildJsonNode(value, key) {
+  value = normalizeJsonValue(value);
   const type = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
 
   if (type === "object" || type === "array") {
@@ -29,16 +54,14 @@ function buildJsonNode(value, key) {
     details.open = true;
 
     const summary = document.createElement("summary");
-    if (key !== undefined && key !== null) {
-      summary.innerHTML =
-        '<span class="json-key">' +
-        key +
-        "</span>: " +
-        (type === "array" ? "Array[" + value.length + "]" : "Object");
-    } else {
-      summary.textContent =
-        type === "array" ? "Array[" + value.length + "]" : "Object";
-    }
+    appendKey(summary, key);
+    summary.appendChild(
+      document.createTextNode(
+        type === "array"
+          ? "Array[" + value.length + "]"
+          : "Object{" + Object.keys(value).length + "}",
+      ),
+    );
     details.appendChild(summary);
 
     const entries = type === "array" ? value.entries() : Object.entries(value);
@@ -52,25 +75,26 @@ function buildJsonNode(value, key) {
   const line = document.createElement("div");
   line.className = "json-primitive";
 
-  const keyPart =
-    key !== undefined && key !== null
-      ? '<span class="json-key">' + key + "</span>: "
-      : "";
+  appendKey(line, key);
+  const valueEl = document.createElement("span");
 
   if (value === null) {
-    line.innerHTML = keyPart + '<span class="json-null">null</span>';
+    valueEl.className = "json-null";
+    valueEl.textContent = "null";
   } else if (typeof value === "string") {
-    line.innerHTML =
-      keyPart + '<span class="json-string">"' + value + '"</span>';
+    valueEl.className = "json-string";
+    valueEl.textContent = '"' + value + '"';
   } else if (typeof value === "number") {
-    line.innerHTML = keyPart + '<span class="json-number">' + value + "</span>";
+    valueEl.className = "json-number";
+    valueEl.textContent = String(value);
   } else if (typeof value === "boolean") {
-    line.innerHTML =
-      keyPart + '<span class="json-boolean">' + value + "</span>";
+    valueEl.className = "json-boolean";
+    valueEl.textContent = String(value);
   } else {
-    line.textContent = keyPart + String(value);
+    valueEl.textContent = String(value);
   }
 
+  line.appendChild(valueEl);
   return line;
 }
 
@@ -84,17 +108,112 @@ function renderJsonTree(container, value) {
     return;
   }
 
+  value = normalizeJsonValue(value);
   const type = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
-  if (type !== "object" && type !== "array") {
-    const msg = document.createElement("div");
-    msg.className = "empty-message";
-    msg.textContent = "Not JSON (showing as text).";
-    container.appendChild(msg);
+  const root =
+    type === "object" || type === "array"
+      ? buildJsonNode(value, null)
+      : buildJsonNode(value);
+  container.appendChild(root);
+}
+
+function headersToObject(headers) {
+  const result = {};
+
+  for (const header of headers || []) {
+    if (!header || !header.name) continue;
+
+    const name = header.name;
+    const value = header.value ?? "";
+
+    if (Object.prototype.hasOwnProperty.call(result, name)) {
+      if (Array.isArray(result[name])) {
+        result[name].push(value);
+      } else {
+        result[name] = [result[name], value];
+      }
+    } else {
+      result[name] = value;
+    }
+  }
+
+  return result;
+}
+
+function buildHeadersView(req) {
+  return {
+    request: headersToObject(req?.requestHeaders || []),
+    response: headersToObject(req?.responseHeaders || []),
+  };
+}
+
+function decryptAuthorizationHeaders(headersView) {
+  const nextHeaders = {
+    request: { ...(headersView?.request || {}) },
+    response: { ...(headersView?.response || {}) },
+  };
+
+  for (const section of ["request", "response"]) {
+    const entries = Object.entries(nextHeaders[section]);
+
+    for (const [name, value] of entries) {
+      if (name.toLowerCase() !== "authorization") continue;
+
+      nextHeaders[section][name] = decryptAuthorizationValue(value);
+    }
+  }
+
+  return nextHeaders;
+}
+
+function decryptAuthorizationValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => decryptAuthorizationValue(item));
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return value;
+  }
+
+  try {
+    return window.decryptPayload(value.trim());
+  } catch (e) {
+    console.warn("Decrypt authorization failed:", e);
+    return value;
+  }
+}
+
+function serializeForClipboard(value) {
+  if (value === undefined || value === null) return "";
+
+  if (typeof value === "string") {
+    const parsed = safeParseJson(value);
+    if (parsed !== value) {
+      return prettyJson(parsed);
+    }
+    return value;
+  }
+
+  return prettyJson(value);
+}
+
+async function copyText(text) {
+  const nextText = text ?? "";
+
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(nextText);
     return;
   }
 
-  const root = buildJsonNode(value, null);
-  container.appendChild(root);
+  const textArea = document.createElement("textarea");
+  textArea.value = nextText;
+  textArea.setAttribute("readonly", "true");
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
 }
 
 function getFirstQueryParam(url) {
@@ -158,4 +277,3 @@ function getPostEncryptedPayload(req) {
 
   return null;
 }
-

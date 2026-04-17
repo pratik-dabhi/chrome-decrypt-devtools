@@ -163,6 +163,8 @@
         flex-direction: column;
         height: 100%;
         overflow: hidden;
+        min-width: 0;
+        min-height: 0;
       }
 
       .request-summary {
@@ -177,6 +179,23 @@
         display: flex;
         border-bottom: 1px solid #111827;
         flex-shrink: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: #374151 #020617;
+      }
+
+      .tabs::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .tabs::-webkit-scrollbar-track {
+        background: #020617;
+      }
+
+      .tabs::-webkit-scrollbar-thumb {
+        background: #374151;
+        border-radius: 999px;
       }
 
       .tab-button {
@@ -187,6 +206,8 @@
         background: #020617;
         color: #9ca3af;
         cursor: pointer;
+        flex: 0 0 auto;
+        min-width: 84px;
       }
 
       .tab-button.active {
@@ -207,6 +228,7 @@
         overflow: hidden;
         padding: 8px 10px;
         flex-direction: column;
+        min-height: 0;
       }
 
       .tab-pane.active {
@@ -221,6 +243,8 @@
         font-size: 11px;
         color: #9ca3af;
         flex-shrink: 0;
+        gap: 8px;
+        flex-wrap: wrap;
       }
 
       .sub-toolbar-left {
@@ -238,6 +262,13 @@
         color: #9ca3af;
       }
 
+      .sub-toolbar-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
       .content-split {
         border-radius: 4px;
         border: 1px solid #1f2937;
@@ -245,8 +276,7 @@
         flex-direction: column;
         gap: 8px;
         flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: hidden;
         min-height: 0;
         scrollbar-width: thin;
         scrollbar-color: #374151 #020617;
@@ -276,8 +306,9 @@
         background: #020617;
         padding: 6px 8px;
         font-size: 11px;
-        height: 65vh;
-        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
         font-family:
           ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
           "Liberation Mono", "Courier New", monospace;
@@ -287,14 +318,16 @@
       .json-tree {
         padding: 4px 6px;
         background: #020617;
+        flex: 1;
+        min-height: 0;
         font-family:
           ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
           "Liberation Mono", "Courier New", monospace;
-        overflow: visible;
+        overflow: auto;
         white-space: normal;
         word-break: break-word;
         max-height: none;
-        height: 65vh;
+        display: none;
       }
 
       .json-primitive {
@@ -393,6 +426,10 @@
                 <span>Headers</span>
                 <span class="badge" id="headers-mode">raw</span>
               </div>
+              <div class="sub-toolbar-actions">
+                <button id="headers-decrypt-btn">Decrypt</button>
+                <button id="headers-copy-btn">Copy</button>
+              </div>
             </div>
             <div class="content-split">
               <pre id="headers-raw"></pre>
@@ -406,7 +443,10 @@
                 <span>Params</span>
                 <span class="badge" id="params-mode">raw</span>
               </div>
-              <button id="params-decrypt-btn">Decrypt</button>
+              <div class="sub-toolbar-actions">
+                <button id="params-decrypt-btn">Decrypt</button>
+                <button id="params-copy-btn">Copy</button>
+              </div>
             </div>
             <div class="content-split">
               <pre id="params-raw"></pre>
@@ -420,7 +460,10 @@
                 <span>Payload</span>
                 <span class="badge" id="payload-mode">raw</span>
               </div>
-              <button id="payload-decrypt-btn">Decrypt</button>
+              <div class="sub-toolbar-actions">
+                <button id="payload-decrypt-btn">Decrypt</button>
+                <button id="payload-copy-btn">Copy</button>
+              </div>
             </div>
             <div class="content-split">
               <pre id="payload-raw"></pre>
@@ -434,7 +477,10 @@
                 <span>Response</span>
                 <span class="badge" id="response-mode">raw</span>
               </div>
-              <button id="response-decrypt-btn">Decrypt</button>
+              <div class="sub-toolbar-actions">
+                <button id="response-decrypt-btn">Decrypt</button>
+                <button id="response-copy-btn">Copy</button>
+              </div>
             </div>
             <div class="content-split">
               <pre id="response-raw"></pre>
